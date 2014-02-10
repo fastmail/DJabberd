@@ -137,7 +137,7 @@ sub ack_success {
     my ($sasl_conn, $challenge, $conn) = @_;
 
     my $username = $sasl_conn->answer('username') || $sasl_conn->answer('user');
-    my $sname = $conn->vhost->name;
+    my $sname = $conn->to_host;
     unless ($username && $sname) {
         $conn->log->error("Couldn't bind to a jid, declining.");
         $self->send_failure("not-authorized" => $conn);
