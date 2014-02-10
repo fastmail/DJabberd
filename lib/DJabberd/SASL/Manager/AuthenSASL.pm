@@ -47,7 +47,7 @@ sub manager_implementation {
                 if ($vhost->are_hooks("CheckCleartext")) {
                     $vhost->run_hook_chain(
                         phase   => "CheckCleartext",
-                        args    => [ username => $user, password => $pass ],
+                        args    => [ username => $user, password => $pass, conn => $conn ],
                         methods => {
                             accept => sub { $cb->(1) },
                             reject => sub { $cb->(0) },
