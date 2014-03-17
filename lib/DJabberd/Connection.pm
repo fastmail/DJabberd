@@ -419,7 +419,12 @@ sub write_stanza {
     }
 
     my $from = "";
-    die "no from" if ($elename ne 'iq' && !$from_jid);
+    if ($elename ne 'iq' && !$from_jid) {
+        my $msg = sprintf("no from [jid %s stream_id %s]: %s", $self->bound_jid, $self->stream_id, $stanza->as_xml);
+        $self->log->warn($msg);
+        warn $msg;
+        return;
+    }
 
     $from = $from_jid ? " from='" . $from_jid->as_string_exml . "'" : "";
 
