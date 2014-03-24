@@ -10,7 +10,17 @@ Net::SSLeay::randomize();
 sub on_recv_from_server { &process }
 sub on_recv_from_client { &process }
 
+# always acceptable
+sub acceptable_from_server { 1 }
+
 sub process {
+    my ($self, $conn) = @_;
+
+    return $self->_do_starttls($conn) if $self->element eq '{urn:ietf:params:xml:ns:xmpp-tls}starttls';
+    return $self->_do_proceed($conn);
+}
+
+sub _do_starttls {
     my ($self, $conn) = @_;
 
     # {=tls-no-spaces} -- we can't send spaces after the closing bracket
@@ -28,17 +38,19 @@ sub process {
     Net::SSLeay::CTX_set_mode($ctx, 1)  # enable partial writes
         and Net::SSLeay::die_if_ssl_error("ssl ctx set options");
 
+    my $config = $conn->vhost || $conn->server;
+
     # Following will ask password unless private key is not encrypted
-    Net::SSLeay::CTX_use_RSAPrivateKey_file ($ctx,  $conn->vhost->ssl_private_key_file,
+    Net::SSLeay::CTX_use_RSAPrivateKey_file ($ctx, $config->ssl_private_key_file,
                                              &Net::SSLeay::FILETYPE_PEM);
     Net::SSLeay::die_if_ssl_error("private key");
 
-    Net::SSLeay::CTX_use_certificate_file ($ctx, $conn->vhost->ssl_cert_file,
+    Net::SSLeay::CTX_use_certificate_file ($ctx, $config->ssl_cert_file,
                                            &Net::SSLeay::FILETYPE_PEM);
     Net::SSLeay::die_if_ssl_error("certificate");
 
-    if ($conn->vhost->server->ssl_cert_chain_file) {
-        Net::SSLeay::CTX_use_certificate_chain_file ($ctx, $conn->vhost->ssl_cert_chain_file);
+    if ($config->ssl_cert_chain_file) {
+        Net::SSLeay::CTX_use_certificate_chain_file ($ctx, $config->ssl_cert_chain_file);
         Net::SSLeay::die_if_ssl_error("certificate chain file");
     }
 
@@ -47,16 +59,40 @@ sub process {
     $conn->{ssl} = $ssl;
     $conn->restart_stream;
     
-    DJabberd::Stanza::StartTLS->finalize_ssl_negotiation($conn, $ssl, $ctx);
+    DJabberd::Stanza::StartTLS->finalize_ssl_negotiation($conn, $ssl, $ctx, 0);
+}
+
+sub _do_proceed {
+    my ($self, $conn) = @_;
+
+    my $ctx = Net::SSLeay::CTX_new()
+        or die("Failed to create SSL_CTX $!");
+
+    $Net::SSLeay::ssl_version = 10; # Insist on TLSv1
+    #$Net::SSLeay::ssl_version = 3; # Insist on SSLv3
+
+    Net::SSLeay::CTX_set_options($ctx, &Net::SSLeay::OP_ALL)
+        and Net::SSLeay::die_if_ssl_error("ssl ctx set options");
+
+    Net::SSLeay::CTX_set_mode($ctx, 1)  # enable partial writes
+        and Net::SSLeay::die_if_ssl_error("ssl ctx set options");
+
+    my $ssl = Net::SSLeay::new($ctx) or die_now("Failed to create SSL $!");
+    $conn->{ssl} = $ssl;
+    $conn->restart_stream;
+
+    DJabberd::Stanza::StartTLS->finalize_ssl_negotiation($conn, $ssl, $ctx, 1);
+
+    $conn->start_connecting;
 }
 
 # Complete the transformation of stream from tcp socket into ssl socket:
 # 1. setup disconnect handler to free memory for $ssl and $ctx on connection close
 # 2. SSL object is connected to underlying connection socket
-# 3. 'accept' tells SSL to start negotiating encryption
+# 3. 'accept' or 'connect' tells SSL to start negotiating encryption
 # 4. set a socket write function that encrypts data before writting to the underlying socket
 sub finalize_ssl_negotiation {
-    my ($class, $conn, $ssl, $ctx) = @_;
+    my ($class, $conn, $ssl, $ctx, $connect) = @_;
 
     # Add a disconnect handler to this connection that will free memory
     # and remove references to junk no longer needed on close
@@ -77,9 +113,9 @@ sub finalize_ssl_negotiation {
 
     $Net::SSLeay::trace = 2;
 
-    my $rv = Net::SSLeay::accept($ssl);
+    my $rv = $connect ? Net::SSLeay::connect($ssl) : Net::SSLeay::accept($ssl);
     if (!$rv) {
-        warn "SSL accept error on $conn\n";
+        warn "SSL ".($connect ? "connect" : "accept")."error on $conn\n";
         $conn->close;
         return;
     }

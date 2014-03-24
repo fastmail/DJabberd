@@ -5,6 +5,7 @@ use base 'DJabberd::Connection';
 use fields (
             'state',
             'queue',  # our DJabberd::Queue::ServerOut
+            'ssid',
             );
 
 use IO::Handle;
@@ -69,7 +70,7 @@ sub on_connected {
 sub event_write {
     my $self = shift;
 
-    if ($self->{state} eq "connecting") {
+    if ($self->{state} eq "connecting" || $self->{state} eq "want-starttls") {
         $self->{state} = "connected";
         $self->on_connected;
     } else {
@@ -90,12 +91,22 @@ sub on_stream_start {
 
     $self->log->debug("Connection $self->{id} supports dialback");
 
+    $self->{ssid} = $ss->id;
+
+    return $self->_start_dialback unless $ss->version->supports_features;
+
+    $self->{state} = 'want-features';
+}
+
+sub _start_dialback {
+    my ($self) = @_;
+
     my $vhost       = $self->{queue}->vhost;
     my $orig_server = $self->{queue}->origin;
     my $recv_server = $self->{queue}->domain;
 
     my $db_params = DJabberd::DialbackParams->new(
-                                                  id   => $ss->id,
+                                                  id   => $self->{ssid},
                                                   recv => $recv_server,
                                                   orig => $orig_server,
                                                   vhost => $vhost,
@@ -118,7 +129,27 @@ sub on_stanza_received {
     # we only deal with dialback verifies here.  kinda ghetto
     # don't make a Stanza::DialbackVerify, maybe we should.
     unless ($node->element eq "{jabber:server:dialback}result") {
-        return $self->SUPER::process_incoming_stanza_from_s2s_out($node);
+        my $ret = $self->SUPER::process_incoming_stanza_from_s2s_out($node);
+        return $ret unless $self->{state} eq 'want-features';
+
+        my $can_starttls =
+            $self->{rcvd_features} &&
+            grep { $_->element eq "{urn:ietf:params:xml:ns:xmpp-tls}starttls" }
+                $self->{rcvd_features}->children_elements;
+
+        unless ($can_starttls) {
+            $self->log->debug("starttls not available, continuing with dialback");
+            $self->{state} = 'connected';
+            return $self->_start_dialback;
+        }
+
+        $self->log->debug("we can starttls");
+
+        $self->write(q{<starttls xmlns='urn:ietf:params:xml:ns:xmpp-tls'/>});
+
+        $self->{state} = 'want-starttls';
+
+        return $ret;
     }
 
     unless ($node->attr("{}type") eq "valid") {

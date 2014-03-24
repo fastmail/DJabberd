@@ -359,6 +359,7 @@ sub process_incoming_stanza_from_s2s_out {
 
     my %stanzas = (
                    "{urn:ietf:params:xml:ns:xmpp-tls}starttls"  => 'DJabberd::Stanza::StartTLS',
+                   "{urn:ietf:params:xml:ns:xmpp-tls}proceed"   => 'DJabberd::Stanza::StartTLS',
                    "{http://etherx.jabber.org/streams}features" => 'DJabberd::Stanza::StreamFeatures',
                    );
 
@@ -694,8 +695,7 @@ sub start_stream_back {
         # unless we're already in SSL mode, advertise it as a feature...
         # {=must-send-features-on-1.0}
         if (!$self->{ssl}
-            && $self->server->ssl_cert_file
-            && !$self->isa("DJabberd::Connection::ServerIn")) {
+            && $self->server->ssl_cert_file) {
             $features_body .= "<starttls xmlns='urn:ietf:params:xml:ns:xmpp-tls' />";
         }
         if (my $vh = $self->vhost) {
