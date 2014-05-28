@@ -617,7 +617,7 @@ sub process_iq_setauth {
 sub process_iq_session {
     my ($conn, $iq) = @_;
 
-    my $from = $iq->from;
+    my $from = exml($iq->from);
     my $id   = $iq->id;
 
     my $xml = qq{<iq from='$from' type='result' id='$id'/>};
