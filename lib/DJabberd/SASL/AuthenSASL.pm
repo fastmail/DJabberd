@@ -25,6 +25,8 @@ sub register {
                 return;
             }
         }
+        # don't offer auth without SSL
+        return unless $conn->ssl;
         my @mech = $plugin->mechanisms_list;
         my $xml_mechanisms =
             "<mechanisms xmlns='urn:ietf:params:xml:ns:xmpp-sasl'>";

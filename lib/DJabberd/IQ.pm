@@ -526,6 +526,10 @@ sub process_iq_setauth {
         return 1;
     };
 
+    unless ($conn->ssl) {
+        $reject->();
+        return;
+    }
 
     my $accept = sub {
         my $cb = shift;

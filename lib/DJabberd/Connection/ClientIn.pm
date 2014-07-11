@@ -196,7 +196,10 @@ sub on_stream_start {
         $opts{features} .= qq{<session xmlns='urn:ietf:params:xml:ns:xmpp-session'/>};
     }
     else {
-        $opts{features} = qq{<auth xmlns='http://jabber.org/features/iq-auth'/>};
+        # don't offer auth without SSL
+        if ($self->ssl) {
+            $opts{features} = qq{<auth xmlns='http://jabber.org/features/iq-auth'/>};
+        }
     }
     $self->start_stream_back($ss, %opts);
 }
