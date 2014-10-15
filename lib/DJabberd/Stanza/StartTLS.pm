@@ -26,11 +26,8 @@ sub _do_starttls {
     # {=tls-no-spaces} -- we can't send spaces after the closing bracket
     $conn->write("<proceed xmlns='urn:ietf:params:xml:ns:xmpp-tls' />");
 
-    my $ctx = Net::SSLeay::CTX_new()
+    my $ctx = Net::SSLeay::CTX_tlsv1_new()
         or die("Failed to create SSL_CTX $!");
-
-    $Net::SSLeay::ssl_version = 10; # Insist on TLSv1
-    #$Net::SSLeay::ssl_version = 3; # Insist on SSLv3
 
     Net::SSLeay::CTX_set_options($ctx, &Net::SSLeay::OP_ALL)
         and Net::SSLeay::die_if_ssl_error("ssl ctx set options");

@@ -13,16 +13,12 @@ sub new {
     my ($class, $sock, $server) = @_;
     my $self = $class->SUPER::new($sock, $server);
 
-    my $ctx = Net::SSLeay::CTX_new()
-        or die("Failed to create SSL_CTX $!");
-
     my $vhost = $server->lookup_vhost(undef, $self->local_ip_string());
 
     my $keysource = $vhost || $server;  # ducktype find cert
 
-    # compared to the StartTLS, we specifically do not insist on TLS here.
-    # let client do SSL 2/3/whatever.  TODO: perhaps force SSL v3?
-    # $Net::SSLeay::ssl_version = 10; # Insist on TLSv1
+    my $ctx = Net::SSLeay::CTX_tlsv1_new()
+        or die("Failed to create SSL_CTX $!");
 
     Net::SSLeay::CTX_set_options($ctx, &Net::SSLeay::OP_ALL)
         and Net::SSLeay::die_if_ssl_error("ssl ctx set options");
