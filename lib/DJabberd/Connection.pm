@@ -692,13 +692,15 @@ sub start_stream_back {
 
     my $features = "";
     if ($ss->version->supports_features) {
+        my $vh = $self->vhost;
         # unless we're already in SSL mode, advertise it as a feature...
         # {=must-send-features-on-1.0}
         if (!$self->{ssl}
+            && !($vh && $vh->ssl_disabled)
             && $self->server->ssl_cert_file) {
             $features_body .= "<starttls xmlns='urn:ietf:params:xml:ns:xmpp-tls' />";
         }
-        if (my $vh = $self->vhost) {
+        if ($vh) {
             $vh->hook_chain_fast("SendFeatures",
                                   [ $self ],
                                   {

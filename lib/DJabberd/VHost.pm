@@ -15,6 +15,7 @@ sub new {
 
     my $self = {
         'server_name'   => lc(delete $opts{server_name} || ""),
+        'disable_ssl'   => delete $opts{disable_ssl},
         'require_ssl'   => delete $opts{require_ssl},
         's2s'           => delete $opts{s2s},
         'hooks'         => {},
@@ -350,6 +351,12 @@ sub add_plugin {
     $logger->info("Adding plugin: $plugin");
     $self->{plugin_types}{ref $plugin} = 1;
     $plugin->register($self);
+}
+
+*ssl_disabled = \&disable_ssl;  # english
+sub disable_ssl {
+    my $self = shift;
+    return $self->{disable_ssl};
 }
 
 *requires_ssl = \&require_ssl;  # english
