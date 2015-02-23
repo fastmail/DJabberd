@@ -696,7 +696,7 @@ sub start_stream_back {
         # unless we're already in SSL mode, advertise it as a feature...
         # {=must-send-features-on-1.0}
         if (!$self->{ssl}
-            && !($vh && $vh->ssl_disabled)
+            && !($ns eq 'jabber:client' && $vh && $vh->ssl_disabled)
             && $self->server->ssl_cert_file) {
             $features_body .= "<starttls xmlns='urn:ietf:params:xml:ns:xmpp-tls' />";
         }
