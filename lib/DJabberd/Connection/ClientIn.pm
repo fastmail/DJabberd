@@ -142,7 +142,7 @@ sub close {
         $self->set_available(0);
 
         my $unavail = DJabberd::Presence->unavailable_stanza;
-        $unavail->broadcast_from($self);
+        $unavail->process_outbound($self);
     }
 
     if (my $jid = $self->bound_jid) {
