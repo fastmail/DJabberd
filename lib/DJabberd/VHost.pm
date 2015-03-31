@@ -447,17 +447,15 @@ sub register_jid {
 }
 
 sub unregister_jid {
-    my ($self, $jid, $conn) = @_;
+    my ($self, $jid) = @_;
 
     my $barestr = $jid->as_bare_string;
     my $fullstr = $jid->as_string;
 
     my $deleted_fulljid;
     if (my $exist = $self->{jid2sock}{$fullstr}) {
-        if ($exist == $conn) {
-            delete $self->{jid2sock}{$fullstr};
-            $deleted_fulljid = 1;
-        }
+        delete $self->{jid2sock}{$fullstr};
+        $deleted_fulljid = 1;
     }
 
     if ($deleted_fulljid) {
