@@ -149,7 +149,7 @@ sub deliver {
         }
 
         # subscriptions handled elsewhere
-        if ($type =~ m/^(?:un)?subscribe(?:d)$/ || $type eq "probe") {
+        if ($type =~ m/^(?:un)?subscribed?$/ || $type eq "probe") {
             return $cb->declined;
         }
 
